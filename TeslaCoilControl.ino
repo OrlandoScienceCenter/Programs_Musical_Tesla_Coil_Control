@@ -22,8 +22,6 @@ attachInterrupt(0, coilButtonOff, FALLING);
 pinMode(SSR_PIN, OUTPUT);
 digitalWrite(SSR_PIN, LOW);
 
-Serial.begin(9600);
-
 ring.begin();
 ring.show();
 
@@ -31,22 +29,20 @@ ring.show();
 
 void loop() {
 if(!lockout){
-Serial.println("System Ready");
-Serial.println(buttonState);
-Serial.println(lockout);
+systemReady();
 }
 buttonState = digitalRead(BUTTON_PIN);
 
 if(buttonState && !lockout){ /// discharging coil -zzzzzzzzzap
     digitalWrite(SSR_PIN, HIGH); // energizing the coil circuit
-	Serial.println("Firing coil");
+	//Serial.println("Firing coil");
 	timeHeldOn = (currentMillis - previousMillis); // does this need a multiplier?
 	timerLockControl();
     discharge(); // animation for discharging
 }
 if(lockout){ // coil off
 	digitalWrite(SSR_PIN, LOW);
-	Serial.println("System locked out");
+	//Serial.println("System locked out");
 	timerUnlockControl();
 		if (timeHeldOn > maxTimeOn){
 			timeHeldOn = maxTimeOn;
@@ -57,8 +53,6 @@ if (!buttonState && !lockout)
 	timerUnlockControl(); // watches the discharge timer lock
 		}
 
-		void recharge(){} // animation and recharge timer thing
-void discharge(){}
 
 void timerLockControl() {
 currentMillis = millis();
@@ -77,6 +71,23 @@ void timerUnlockControl() {
 }
 
 
+void systemReady(){
+		for(int i = 0; i < (ring.numPixels()); i++){
+		ring.setPixelColor(i, 0, 255, 0);
+		}
+	ring.show();
+	}
+void recharge(){		
+		for(int i = 0; i < (ring.numPixels()); i++){
+		ring.setPixelColor(i, 255, 0, 0);
+		}
+	ring.show();
+	} // animation and recharge timer thing
+void discharge(){		
+		for(int i = 0; i < (ring.numPixels()); i++){
+		ring.setPixelColor(i, 255, 255, 0);
+		}
+	}
 
 
 //Interrupt code below
