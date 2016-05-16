@@ -1,6 +1,6 @@
 #include <Adafruit_NeoPixel.h>
 #define BUTTON_PIN 3
-#define RING_PIN 16
+#define RING_PIN 9
 #define PIXELCOUNT 16
 #define SSR_PIN 13
 
@@ -37,20 +37,28 @@ Serial.println(lockout);
 }
 buttonState = digitalRead(BUTTON_PIN);
 
-if(buttonState && !lockout){
+if(buttonState && !lockout){ /// discharging coil -zzzzzzzzzap
     digitalWrite(SSR_PIN, HIGH); // energizing the coil circuit
 	Serial.println("Firing coil");
 	timeHeldOn = (currentMillis - previousMillis); // does this need a multiplier?
 	timerLockControl();
-    // loop animation
+    discharge(); // animation for discharging
 }
-if(lockout){
+if(lockout){ // coil off
 	digitalWrite(SSR_PIN, LOW);
 	Serial.println("System locked out");
 	timerUnlockControl();
+		if (timeHeldOn > maxTimeOn){
+			timeHeldOn = maxTimeOn;
+			}
+	recharge(); // animation for recharging
 	}
-}
-void recharge(){} // animation and recharge timer thing
+if (!buttonState && !lockout)
+	timerUnlockControl(); // watches the discharge timer lock
+		}
+
+		void recharge(){} // animation and recharge timer thing
+void discharge(){}
 
 void timerLockControl() {
 currentMillis = millis();
@@ -78,7 +86,6 @@ void timerUnlockControl() {
 
 void coilButtonOff() {
   digitalWrite(SSR_PIN, LOW);
-  Serial.println ("button released interrupt ***************************");
   previousMillis = currentMillis;
   lockout = 1; // locks coil from being re-fired once button is released
   //recharge(); 
