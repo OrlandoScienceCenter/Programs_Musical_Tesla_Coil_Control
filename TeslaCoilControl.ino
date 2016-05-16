@@ -16,6 +16,7 @@ unsigned long previousMillis = 0;
 unsigned long currentMillis = 0;
 unsigned long timeHeldOn = 0;
 volatile uint8_t buttonState = 0; // has to be volitile because of interrupts 
+uint8_t pixelPosition = 0; //current pixel position. always <= PIXELCOUNT
 
 int maxTimeOn = 8000; //max time coil can be energized for, in MS (make div 16)
 int timeTilOff = 0;    // increases cool down time as coil is on for longer
@@ -46,8 +47,7 @@ void loop() {
 	if(!lockout){
 		systemReady(); // sets up animations for ready/green
 	}
-
-
+	//
 	if(buttonState && !lockout){ /// discharging coil -zzzzzzzzzap
 		digitalWrite(SSR_PIN, HIGH); // energizing the coil circuit
 		timeHeldOn = (currentMillis - previousMillis);//does this need a multiplier
@@ -95,19 +95,20 @@ void timerLockControl() {
 /*	      NeoPixel Ring Control        */
 /***************************************/
 void systemReady(){
-		for(int i = 0; i < (ring.numPixels()); i++){
-		ring.setPixelColor(i, 0, 255, 0);
+		for(pixelPosition = 0; pixelPosition < (ring.numPixels()); pixelPosition++){
+		ring.setPixelColor(pixelPosition, 0, 255, 0);
 		}
 	ring.show();
 	}
 void recharge(){		
-		for(int i = 0; i < (ring.numPixels()); i++){
-		ring.setPixelColor(i, 255, 0, 0);
+		
+		for(pixelPosition; pixelPosition < (ring.numPixels()); pixelPosition++){
+		ring.setPixelColor(pixelPosition, 255, 0, 0);
 		}
 	ring.show();
 	} // animation and recharge timer thing
 void discharge(){		
-		for(int i = 0; i < (ring.numPixels()); i++){
+		for(pixelPosition; pixelPosition < (ring.numPixels()); i++){
 		ring.setPixelColor(i, 255, 255, 0);
 		}
 	}
