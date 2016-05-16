@@ -107,10 +107,12 @@ void recharge(){
 		}
 	ring.show();
 	} // animation and recharge timer thing
-void discharge(){		
-		for(pixelPosition; pixelPosition < (ring.numPixels()); i++){
-		ring.setPixelColor(i, 255, 255, 0);
+void discharge(){	
+	uint8_t dischargePixelPosition = 0;
+		for(dischargePixelPosition; dischargePixelPosition < pixelPosition; dischargePixelPosition++){ // sets all active pixels to red
+		ring.setPixelColor(dischargePixelPosition, 255, 255, 0); 
 		}
+		pixelPosition = dischargePixelPosition;
 	}
 
 
