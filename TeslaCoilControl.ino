@@ -112,12 +112,12 @@ void discharge(){
 		for(dischargePixelPosition; dischargePixelPosition < pixelPosition; dischargePixelPosition++){ // sets all active pixels to red
 		ring.setPixelColor(dischargePixelPosition, 255, 255, 0); 
 		}
+		dischargePixelPosition = pixelPosition;
 		for (int i = dischargePixelPosition; dischargePixelPosition < ring.numPixels(); i++){
 		ring.setPixelColor(i, 0,0,0); // handles the blackout portion 
 		}
 		ring.show(); // show the full circle now
-		//pixelPosition = dischargePixelPosition;
-	}
+		}
 
 void pixelIntervalTimer (){
 	uint8_t intervalDivisor = 0;
