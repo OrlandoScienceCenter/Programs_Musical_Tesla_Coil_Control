@@ -20,7 +20,7 @@ uint8_t pixelPosition = 0; //current pixel position. always <= PIXELCOUNT
 
 int maxTimeOn = 4000; //max time coil can be energized for, in MS (make div 16)
 int timeTilOff = 0;    // increases cool down time as coil is on for longer
-int protectionDelay = 1000; // minimum delay on recharge
+int protectionDelay = 500; // minimum delay on recharge (value is *2 in code below)
 
 
 ;
@@ -52,7 +52,7 @@ void loop() {
 	//
 	if(buttonState && !lockout){ /// discharging coil -zzzzzzzzzap
 		digitalWrite(SSR_PIN, HIGH); // energizing the coil circuit
-		if ((currentMillis - previousMillis)< protectionDelay){
+		if ((currentMillis - previousMillis)< protectionDelay * 2){
 		timeHeldOn = protectionDelay;
 		}
     else{
@@ -91,7 +91,7 @@ void timerLockControl() {
 /***************************************/
 	void timerUnlockControl() {
 		currentMillis = millis();
-		if (currentMillis - previousMillis >= timeHeldOn ) {
+		if (currentMillis - previousMillis >= timeHeldOn * 2 ) {
 		  previousMillis = currentMillis;  
 		  lockout = 0; // unlock the coil to fire again
 		  timeHeldOn = 0; // reset hold timer
