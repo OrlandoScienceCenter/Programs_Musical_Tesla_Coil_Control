@@ -45,6 +45,7 @@ void setup() {
 /*		  		 LOOP                  */
 /***************************************/
 void loop() {
+	delay(5); // remove before implementation 
 	buttonState = digitalRead(BUTTON_PIN); // read the button state
 	pixelIntervalTimer();
 	//
@@ -140,9 +141,10 @@ void pixelIntervalTimer (){
 		if (!lockout && currentMillis - previousMillis >= intervalDivisor ) {
 		  pixelPosition = PIXELCOUNT -(timeHeldOn / intervalDivisor);
 		}
-		currentMillis = millis();
-		if (lockout && (currentMillis - previousMillis >= intervalDivisor )) {
-		  pixelPosition++;	
+		if (lockout && (currentMillis - previousMillis >= intervalDivisor ) && (pixelPosition < 16)) {
+		  delay(intervalDivisor);  /// this is bad must remove and fix because stupid. 
+		  pixelPosition++;
+		
 		}
 	}
 		
@@ -154,6 +156,6 @@ void pixelIntervalTimer (){
 /***************************************/
 void coilButtonOff() {
   digitalWrite(SSR_PIN, LOW);
-  previousMillis = currentMillis;
+  //previousMillis = currentMillis;
   lockout = 1; // locks coil from being re-fired once button is released
   }
