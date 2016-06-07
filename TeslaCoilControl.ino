@@ -1,4 +1,4 @@
-#include <Adafruit_NeoPixel.h>
+#include<FastLED.h>
 #define BUTTON_PIN 3 // needs to be on an interrupt pin
 #define RING_PIN 6
 #define PIXELCOUNT 16
