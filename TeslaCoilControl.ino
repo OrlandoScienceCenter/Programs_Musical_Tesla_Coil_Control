@@ -1,8 +1,8 @@
 #include <Adafruit_NeoPixel.h>
 #define BUTTON_PIN 3 // needs to be on an interrupt pin
-#define RING_PIN 9
+#define RING_PIN 6
 #define PIXELCOUNT 16
-#define SSR_PIN 13
+#define SSR_PIN A0
 
 
 /***************************************/
@@ -18,11 +18,12 @@ unsigned long timeHeldOn = 0;
 volatile uint8_t buttonState = 0; // has to be volitile because of interrupts 
 uint8_t pixelPosition = 0; //current pixel position. always <= PIXELCOUNT
 
-int maxTimeOn = 8000; //max time coil can be energized for, in MS (make div 16)
+int maxTimeOn = 4000; //max time coil can be energized for, in MS (make div 16)
 int timeTilOff = 0;    // increases cool down time as coil is on for longer
+int protectionDelay = 1000; // minimum delay on recharge
 
 
-
+;
 /***************************************/
 /*				 SETUP                 */
 /***************************************/
@@ -35,6 +36,7 @@ void setup() {
 	// Initialize all neopixels to off
 	ring.begin();
 	ring.show();
+	Serial.begin(9600);
 }
 
 
@@ -44,13 +46,18 @@ void setup() {
 void loop() {
 	buttonState = digitalRead(BUTTON_PIN); // read the button state
 	//
-	if(!lockout){
+	if(!lockout && !buttonState){
 		systemReady(); // sets up animations for ready/green
 	}
 	//
 	if(buttonState && !lockout){ /// discharging coil -zzzzzzzzzap
 		digitalWrite(SSR_PIN, HIGH); // energizing the coil circuit
-		timeHeldOn = (currentMillis - previousMillis);//does this need a multiplier
+		if ((currentMillis - previousMillis)< protectionDelay){
+		timeHeldOn = protectionDelay;
+		}
+    else{
+		timeHeldOn = (currentMillis - previousMillis);
+		}
 			timerLockControl();
 			discharge(); // animation for discharging
 	}
@@ -96,27 +103,29 @@ void timerLockControl() {
 /***************************************/
 void systemReady(){
 		for(pixelPosition = 0; pixelPosition < (ring.numPixels()); pixelPosition++){
-		ring.setPixelColor(pixelPosition, 0, 255, 0);
+		ring.setPixelColor(pixelPosition, 0, 180, 0);
 		}
 	ring.show();
+	Serial.println("system ready");
 	}
 void recharge(){		
-		
-		for(pixelPosition; pixelPosition < (ring.numPixels()); pixelPosition++){
-		ring.setPixelColor(pixelPosition, 255, 0, 0);
+		Serial.println("recharging");
+		for(int i=0; i < (ring.numPixels()); i++){
+		ring.setPixelColor(i, 180, 0, 0);
 		}
 	ring.show();
 	} // animation and recharge timer thing
 void discharge(){	
 	uint8_t dischargePixelPosition = 0;
 		for(dischargePixelPosition; dischargePixelPosition < pixelPosition; dischargePixelPosition++){ // sets all active pixels to red
-		ring.setPixelColor(dischargePixelPosition, 255, 255, 0); 
+		ring.setPixelColor(dischargePixelPosition, 0, 0, 180); 
 		}
 		dischargePixelPosition = pixelPosition;
-		for (int i = dischargePixelPosition; dischargePixelPosition < ring.numPixels(); i++){
+		for (int i = dischargePixelPosition; i < ring.numPixels(); i++){
 		ring.setPixelColor(i, 0,0,0); // handles the blackout portion 
 		}
 		ring.show(); // show the full circle now
+		Serial.println("firing");
 		}
 
 void pixelIntervalTimer (){
