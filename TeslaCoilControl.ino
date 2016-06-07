@@ -46,6 +46,7 @@ void setup() {
 /***************************************/
 void loop() {
 	buttonState = digitalRead(BUTTON_PIN); // read the button state
+	pixelIntervalTimer();
 	//
 	if(!lockout && !buttonState){
 		systemReady(); // sets up animations for ready/green
@@ -53,12 +54,7 @@ void loop() {
 	//
 	if(buttonState && !lockout){ /// discharging coil -zzzzzzzzzap
 		digitalWrite(SSR_PIN, HIGH); // energizing the coil circuit
-		if ((currentMillis - previousMillis)< protectionDelay * 2){
-		timeHeldOn = protectionDelay;
-		}
-    else{
 		timeHeldOn = (currentMillis - previousMillis);
-		}
 			timerLockControl();
 			discharge(); // animation for discharging
 	}
@@ -68,6 +64,9 @@ void loop() {
 		timerUnlockControl();
 			if (timeHeldOn > maxTimeOn){
 				timeHeldOn = maxTimeOn;
+				}
+			if (timeHeldOn < protectionDelay){
+				timeHeldOn = protectionDelay;
 				}
 		recharge(); // animation for recharging
 	}
@@ -92,7 +91,7 @@ void timerLockControl() {
 /***************************************/
 	void timerUnlockControl() {
 		currentMillis = millis();
-		if (currentMillis - previousMillis >= timeHeldOn * 2 ) {
+		if (currentMillis - previousMillis >= (timeHeldOn * 2)) {
 		  previousMillis = currentMillis;  
 		  lockout = 0; // unlock the coil to fire again
 		  timeHeldOn = 0; // reset hold timer
@@ -110,7 +109,9 @@ void systemReady(){
 	Serial.println("system ready");
 	}
 void recharge(){		
-		Serial.println("recharging");
+		Serial.print("recharging");
+		Serial.print("   ");
+		Serial.println(pixelPosition);
 		for(int i=0; i < (PIXELCOUNT); i++){
 		ring[i].setRGB(255, 0, 0);
 		}
@@ -122,17 +123,26 @@ void discharge(){
 		}
 		FastLED.show();
 		Serial.print("firing -- TIME ON  ");
-		Serial.println(timeHeldOn);
+		Serial.print(timeHeldOn);
+		Serial.print("   ");
+		Serial.println(pixelPosition);
 		}
 
+		
+/***************************************/
+/*	        pixelIntervalTimer         */
+/***************************************/		
 void pixelIntervalTimer (){
 	uint8_t intervalDivisor = 0;
 		intervalDivisor = maxTimeOn / (PIXELCOUNT); // sets up the divisor for time to determine pixel position value
 		//
 		currentMillis = millis();
-		if (currentMillis - previousMillis >= intervalDivisor ) {
-		  //previousMillis = currentMillis; taken care of in other parts of program  
-		pixelPosition = PIXELCOUNT -(timeHeldOn / intervalDivisor);
+		if (!lockout && currentMillis - previousMillis >= intervalDivisor ) {
+		  pixelPosition = PIXELCOUNT -(timeHeldOn / intervalDivisor);
+		}
+		currentMillis = millis();
+		if (lockout && (currentMillis - previousMillis >= intervalDivisor )) {
+		  pixelPosition++;	
 		}
 	}
 		
@@ -146,5 +156,4 @@ void coilButtonOff() {
   digitalWrite(SSR_PIN, LOW);
   previousMillis = currentMillis;
   lockout = 1; // locks coil from being re-fired once button is released
-  //recharge(); 
   }
