@@ -1,15 +1,17 @@
 #include<FastLED.h>
+
+
 #define BUTTON_PIN 3 // needs to be on an interrupt pin
+#define SSR_PIN A0
+//FastLED
 #define RING_PIN 6
 #define PIXELCOUNT 16
-#define SSR_PIN A0
-
 
 /***************************************/
 /*	       Global Vars / Inits         */
 /***************************************/
 
-Adafruit_NeoPixel ring = Adafruit_NeoPixel (PIXELCOUNT, RING_PIN, NEO_GRB + NEO_KHZ800);
+CRGB ring[PIXELCOUNT];
 
 uint8_t lockout = 0;
 unsigned long previousMillis = 0;
@@ -33,11 +35,10 @@ void setup() {
 	attachInterrupt(0, coilButtonOff, FALLING);
 	pinMode(SSR_PIN, OUTPUT);
 	digitalWrite(SSR_PIN, LOW);
-	// Initialize all neopixels to off
-	ring.begin();
-	ring.show();
 	Serial.begin(9600);
-}
+//Initialize FastLED
+	FastLED.addLeds<NEOPIXEL, RING_PIN>(ring, PIXELCOUNT);
+	}
 
 
 /***************************************/
@@ -102,40 +103,36 @@ void timerLockControl() {
 /*	      NeoPixel Ring Control        */
 /***************************************/
 void systemReady(){
-		for(pixelPosition = 0; pixelPosition < (ring.numPixels()); pixelPosition++){
-		ring.setPixelColor(pixelPosition, 0, 180, 0);
+		for(pixelPosition = 0; pixelPosition < (PIXELCOUNT); pixelPosition++){
+		ring[pixelPosition].setRGB(0, 255, 0);
 		}
-	ring.show();
+	FastLED.show();
 	Serial.println("system ready");
 	}
 void recharge(){		
 		Serial.println("recharging");
-		for(int i=0; i < (ring.numPixels()); i++){
-		ring.setPixelColor(i, 180, 0, 0);
+		for(int i=0; i < (PIXELCOUNT); i++){
+		ring[i].setRGB(255, 0, 0);
 		}
-	ring.show();
+	FastLED.show();
 	} // animation and recharge timer thing
 void discharge(){	
-	uint8_t dischargePixelPosition = 0;
-		for(dischargePixelPosition; dischargePixelPosition < pixelPosition; dischargePixelPosition++){ // sets all active pixels to red
-		ring.setPixelColor(dischargePixelPosition, 0, 0, 180); 
+		for(int i=0; i < (PIXELCOUNT); i++){
+		ring[i].setRGB(0, 0, 255);
 		}
-		dischargePixelPosition = pixelPosition;
-		for (int i = dischargePixelPosition; i < ring.numPixels(); i++){
-		ring.setPixelColor(i, 0,0,0); // handles the blackout portion 
-		}
-		ring.show(); // show the full circle now
-		Serial.println("firing");
+		FastLED.show();
+		Serial.print("firing -- TIME ON  ");
+		Serial.println(timeHeldOn);
 		}
 
 void pixelIntervalTimer (){
 	uint8_t intervalDivisor = 0;
-		intervalDivisor = maxTimeOn / (ring.numPixels()); // sets up the divisor for time to determine pixel position value
+		intervalDivisor = maxTimeOn / (PIXELCOUNT); // sets up the divisor for time to determine pixel position value
 		//
 		currentMillis = millis();
 		if (currentMillis - previousMillis >= intervalDivisor ) {
 		  //previousMillis = currentMillis; taken care of in other parts of program  
-		pixelPosition = ring.numPixels() -(timeHeldOn / intervalDivisor);
+		pixelPosition = PIXELCOUNT -(timeHeldOn / intervalDivisor);
 		}
 	}
 		
