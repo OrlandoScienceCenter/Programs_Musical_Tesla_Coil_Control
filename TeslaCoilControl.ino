@@ -110,18 +110,26 @@ void systemReady(){
 	Serial.println("system ready");
 	}
 void recharge(){		
-		Serial.print("recharging");
-		Serial.print("   ");
-		Serial.println(pixelPosition);
-		for(int i=0; i < (PIXELCOUNT); i++){
+	int p = pixelPosition;
+		for(int i = 0; i < (PIXELCOUNT); i++){
 		ring[i].setRGB(255, 0, 0);
 		}
-	FastLED.show();
-	} // animation and recharge timer thing
-void discharge(){	
-		for(int i=0; i < (PIXELCOUNT); i++){
-		ring[i].setRGB(0, 0, 255);
+		for(p; p <= (PIXELCOUNT); p++){
+		ring[p].setRGB(0, 0, 0);
 		}
+	FastLED.show();
+	Serial.print("recharging");
+	Serial.print("   ");
+	Serial.println(pixelPosition);
+		} // animation and recharge timer thing
+void discharge(){	
+	int p = pixelPosition;
+		for(int i = 0; i <= (PIXELCOUNT); i++){
+			ring[i].setRGB(0, 0, 0);
+			}
+		for(p; p > (0); p--){
+			ring[p].setRGB(0, 0, 255);
+			}
 		FastLED.show();
 		Serial.print("firing -- TIME ON  ");
 		Serial.print(timeHeldOn);
@@ -142,7 +150,7 @@ void pixelIntervalTimer (){
 		  pixelPosition = PIXELCOUNT -(timeHeldOn / intervalDivisor);
 		}
 		if (lockout && (currentMillis - previousMillis >= intervalDivisor ) && (pixelPosition < 16)) {
-		  delay(intervalDivisor);  /// this is bad must remove and fix because stupid. 
+		  delay(intervalDivisor);  /// this is bad must remove and fix. not safety timing, but should fix. 
 		  pixelPosition++;
 		
 		}
