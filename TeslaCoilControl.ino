@@ -5,7 +5,7 @@
 //FastLED
 #define RING_PIN 		6
 #define PIXELCOUNT 		16
-#define	BRIGHTNESS 		50 // sets fastLED global brightness
+#define	BRIGHTNESS 		255 // sets fastLED global brightness
 //
 #define DEBOUNCE_TIME 	100 // how long the button needs to be pressed before activate
 						  // if it feels like there is a "delay" before the coil activates
@@ -67,10 +67,10 @@ void loop() {
 		if (timeHeldOn > DEBOUNCE_TIME){ // set up in combination with coilButtonOff interrupt for debounce 
 		digitalWrite(SSR_PIN, HIGH); // energizing the coil circuit
 		}
+		discharge(); // animation for discharging
 		timeHeldOn = (currentMillis - previousMillis);
 			timerLockControl();
-			discharge(); // animation for discharging
-	}
+			}
 	// What to do when the coil becomes locked out, due to time or button release
 	if(lockout){ // coil off
 		digitalWrite(SSR_PIN, LOW);
@@ -121,7 +121,7 @@ void systemReady(){
 	}
 void recharge(){		
 	int p = pixelPosition;
-		for(int i = 0; i < (PIXELCOUNT); i++){
+		for(int i = 0; i <= (PIXELCOUNT); i++){
 		ring[i].setRGB(255, 0, 0);
 		}
 		for(p; p <= (PIXELCOUNT); p++){
@@ -133,7 +133,7 @@ void recharge(){
 	//Serial.println(pixelPosition);
 		} // animation and recharge timer thing
 void discharge(){	
-	int p = pixelPosition;
+	int p = pixelPosition - 1;
 		for(int i = 0; i <= (PIXELCOUNT); i++){
 			ring[i].setRGB(0, 0, 0);
 			}
@@ -157,7 +157,7 @@ void pixelIntervalTimer (){
 		//
 		currentMillis = millis();
 		if (!lockout && currentMillis - previousMillis >= intervalDivisor ) {
-		  pixelPosition = PIXELCOUNT -(timeHeldOn / intervalDivisor);
+		  pixelPosition = PIXELCOUNT -(timeHeldOn / intervalDivisor) ;
 		}
 		if (lockout && (currentMillis - previousMillis >= intervalDivisor ) && (pixelPosition < 16)) {
 		  delay(intervalDivisor);  /// this is bad must remove and fix. not safety timing, but should fix. 
@@ -174,7 +174,7 @@ void pixelIntervalTimer (){
 /***************************************/
 void coilButtonOff() {
   digitalWrite(SSR_PIN, LOW);
-  if (timeHeldOn > 1 && timeHeldOn < MIN_RECHG_DELAY){ // essentially performing a debounce check and 
+  if (timeHeldOn > 10 && timeHeldOn < MIN_RECHG_DELAY){ // essentially performing a debounce check and 
 	timeHeldOn = MIN_RECHG_DELAY;					// establishing a minium time on for button mashers
 	}
   lockout = 1; // locks coil from being re-fired once button is released
