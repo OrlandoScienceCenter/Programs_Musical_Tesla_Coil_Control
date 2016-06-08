@@ -55,7 +55,7 @@ void setup() {
 /*		  		 LOOP                  */
 /***************************************/
 void loop() {
-	delay(5); // remove before implementation 
+	//delay(5); // remove before implementation 
 	buttonState = digitalRead(BUTTON_PIN); // read the button state
 	pixelIntervalTimer();
 	//
@@ -78,9 +78,6 @@ void loop() {
 			if (timeHeldOn > MAX_TIME_ON){
 				timeHeldOn = MAX_TIME_ON;
 				}
-			//if (timeHeldOn < MIN_RECHG_DELAY){
-			//	timeHeldOn = MIN_RECHG_DELAY;
-			//	}
 		timerUnlockControl();
 		recharge(); // animation for recharging
 	}
