@@ -6,6 +6,7 @@
 //FastLED
 #define RING_PIN 6
 #define PIXELCOUNT 16
+#define	BRIGHTNESS 50 // sets fastLED global brightness
 
 /***************************************/
 /*	       Global Vars / Inits         */
@@ -22,7 +23,7 @@ uint8_t pixelPosition = 0; //current pixel position. always <= PIXELCOUNT
 
 int maxTimeOn = 4000; //max time coil can be energized for, in MS (make div 16)
 int timeTilOff = 0;    // increases cool down time as coil is on for longer
-int protectionDelay = 500; // minimum delay on recharge (value is *2 in code below)
+int protectionDelay = 1000; // minimum delay on recharge (value is *2 in code below)
 
 
 ;
@@ -38,6 +39,7 @@ void setup() {
 	Serial.begin(9600);
 //Initialize FastLED
 	FastLED.addLeds<NEOPIXEL, RING_PIN>(ring, PIXELCOUNT);
+	FastLED.setBrightness(BRIGHTNESS);
 	}
 
 
@@ -54,7 +56,9 @@ void loop() {
 	}
 	//
 	if(buttonState && !lockout){ /// discharging coil -zzzzzzzzzap
+		if (timeHeldOn > 2){ // set up in combination with coilButtonOff interrupt for debounce 
 		digitalWrite(SSR_PIN, HIGH); // energizing the coil circuit
+		}
 		timeHeldOn = (currentMillis - previousMillis);
 			timerLockControl();
 			discharge(); // animation for discharging
@@ -62,13 +66,14 @@ void loop() {
 	// What to do when the coil becomes locked out, due to time or button release
 	if(lockout){ // coil off
 		digitalWrite(SSR_PIN, LOW);
-		timerUnlockControl();
+		timerUnlockControl();		
 			if (timeHeldOn > maxTimeOn){
 				timeHeldOn = maxTimeOn;
 				}
-			if (timeHeldOn < protectionDelay){
-				timeHeldOn = protectionDelay;
-				}
+			//if (timeHeldOn < protectionDelay){
+			//	timeHeldOn = protectionDelay;
+			//	}
+		timerUnlockControl();
 		recharge(); // animation for recharging
 	}
 	// If the button is not pressed, and system not locked out, count down timer
@@ -164,6 +169,8 @@ void pixelIntervalTimer (){
 /***************************************/
 void coilButtonOff() {
   digitalWrite(SSR_PIN, LOW);
-  //previousMillis = currentMillis;
+  if (timeHeldOn > 1 && timeHeldOn < protectionDelay){ // essentially performing a debounce check and 
+	timeHeldOn = protectionDelay;					// establishing a minium time on for button mashers
+	}
   lockout = 1; // locks coil from being re-fired once button is released
   }
