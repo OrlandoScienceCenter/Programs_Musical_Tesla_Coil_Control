@@ -5,9 +5,9 @@
 //FastLED
 #define RING_PIN 		6
 #define PIXELCOUNT 		16
-#define	BRIGHTNESS 		255 // sets fastLED global brightness
+#define	BRIGHTNESS 		20 // sets fastLED global brightness
 //
-#define DEBOUNCE_TIME 	100 // how long the button needs to be pressed before activate
+#define DEBOUNCE_TIME 	50 // how long the button needs to be pressed before activate
 						  // if it feels like there is a "delay" before the coil activates
 				          // lower this value
 
@@ -23,14 +23,14 @@
 
 CRGB ring[PIXELCOUNT]; // FastLED setup
 
-uint8_t lockout = 0;
-unsigned long previousMillis = 0;
-unsigned long currentMillis = 0;
-unsigned long timeHeldOn = 0;
-volatile uint8_t buttonState = 0; // has to be volitile because of interrupts 
-uint8_t pixelPosition = 0; //current pixel position. always <= PIXELCOUNT
+volatile uint8_t lockout = 0;
+volatile unsigned long previousMillis = 0;
+volatile unsigned long currentMillis = 0;
+volatile uint16_t timeHeldOn = 0;
+volatile int buttonState = 0; // has to be volitile because of interrupts 
+uint8_t pixelPosition = 16; //current pixel position. always <= PIXELCOUNT
 
-int timeTilOff = 0;    // increases cool down time as coil is on for longer
+uint16_t timeTilOff = MAX_TIME_ON;    // increases cool down time as coil is on for longer
 
 
 
@@ -40,11 +40,11 @@ int timeTilOff = 0;    // increases cool down time as coil is on for longer
 /***************************************/
 void setup() {
 	pinMode(BUTTON_PIN, INPUT_PULLUP);
-	//attachInterrupt(0, coilButtonOn, RISING); 
 	attachInterrupt(0, coilButtonOff, FALLING);
+//	attachInterrupt(0, coilButtonOn, RISING);
 	pinMode(SSR_PIN, OUTPUT);
 	digitalWrite(SSR_PIN, LOW);
-	//Serial.begin(9600);
+	Serial.begin(9600);
 //Initialize FastLED
 	FastLED.addLeds<NEOPIXEL, RING_PIN>(ring, PIXELCOUNT);
 	FastLED.setBrightness(BRIGHTNESS);
@@ -57,32 +57,46 @@ void setup() {
 void loop() {
 	//delay(5); // remove before implementation 
 	buttonState = digitalRead(BUTTON_PIN); // read the button state
-	pixelIntervalTimer();
+							// normally pulled high by pullup resitor internally
+							// but also connected to the NC portion of switch
+							// 0 - not pressed 1 - pressed 
+	
+	Serial.print ("ButtonState - ");
+	Serial.println(buttonState);
+	Serial.print ("Lockout - ");
+	Serial.println(lockout);
+	currentMillis = millis();
 	//
 	if(!lockout && !buttonState){
 		systemReady(); // sets up animations for ready/green
+		previousMillis = currentMillis;
+		pixelPosition = 16;
 	}
 	//
 	if(buttonState && !lockout){ /// discharging coil -zzzzzzzzzap
-		if (timeHeldOn > DEBOUNCE_TIME){ // set up in combination with coilButtonOff interrupt for debounce 
-		digitalWrite(SSR_PIN, HIGH); // energizing the coil circuit
-		}
-		discharge(); // animation for discharging
 		timeHeldOn = (currentMillis - previousMillis);
-			timerLockControl();
+			if (timeHeldOn > DEBOUNCE_TIME){ // set up in combination with coilButtonOff interrupt for debounce 
+			digitalWrite(SSR_PIN, HIGH); // energizing the coil circuit
+			pixelIntervalTimer();
+			discharge(); // animation for discharging
 			}
-	// What to do when the coil becomes locked out, due to time or button release
-	if(lockout){ // coil off
+		timerLockControl();
+			}
+	// 
+	if(buttonState && lockout){ // coil off
 		digitalWrite(SSR_PIN, LOW);
-		timerUnlockControl();		
-			if (timeHeldOn > MAX_TIME_ON){
-				timeHeldOn = MAX_TIME_ON;
-				}
-		timerUnlockControl();
-		recharge(); // animation for recharging
-	}
-	// If the button is not pressed, and system not locked out, count down timer
-	if (!buttonState && !lockout){
+		}
+	// If the button is not pressed, and system is locked out, count down timer
+	if (!buttonState && lockout){
+      digitalWrite(SSR_PIN, LOW);
+      recharge(); // animation for recharging
+		if (timeHeldOn < MIN_RECHG_DELAY){
+		timeTilOff = MIN_RECHG_DELAY;
+		}
+	  else{
+	  timeTilOff = timeHeldOn + DEBOUNCE_TIME;
+	  }	
+	    pixelIntervalTimer();
 		timerUnlockControl(); // watches the discharge timer lock
 	}
 }
@@ -91,8 +105,10 @@ void loop() {
 /***************************************/
 void timerLockControl() {
 	currentMillis = millis();
-	  if (timeHeldOn >= MAX_TIME_ON ) {
-		previousMillis = currentMillis;
+	Serial.println(timeHeldOn);
+	  if ((timeHeldOn > DEBOUNCE_TIME) && (timeHeldOn - DEBOUNCE_TIME) >= MAX_TIME_ON ) {
+		timeHeldOn = MAX_TIME_ON; // sets time on to max anyway if reached or over max
+		//previousMillis = currentMillis;
 		lockout = 1; // time is locked out, coil cannot be fired
 		}
 }
@@ -102,10 +118,13 @@ void timerLockControl() {
 /***************************************/
 	void timerUnlockControl() {
 		currentMillis = millis();
-		if (currentMillis - previousMillis >= (timeHeldOn * 2)) {
-		  previousMillis = currentMillis;  
+		if (currentMillis - previousMillis >= (timeTilOff * 2) && pixelPosition == 16) { 
+					//check the time, and then check the pixel position for a dirty second check
+		  //previousMillis = currentMillis;  
 		  lockout = 0; // unlock the coil to fire again
-		  timeHeldOn = 0; // reset hold timer
+		  timeTilOff = MAX_TIME_ON;
+		  timeHeldOn = MAX_TIME_ON;
+		 
 	}
 }
 
@@ -113,15 +132,15 @@ void timerLockControl() {
 /*	      NeoPixel Ring Control        */
 /***************************************/
 void systemReady(){
-		for(pixelPosition = 0; pixelPosition < (PIXELCOUNT); pixelPosition++){
-		ring[pixelPosition].setRGB(0, 255, 0);
+		for(int p = 0; p < (PIXELCOUNT); p++){
+		ring[p].setRGB(0, 255, 0);
 		}
 	FastLED.show();
 	//Serial.println("system ready");
 	}
 void recharge(){		
 	int p = pixelPosition;
-		for(int i = 0; i <= (PIXELCOUNT); i++){
+		for(int i = 0; i < (PIXELCOUNT); i++){
 		ring[i].setRGB(255, 0, 0);
 		}
 		for(p; p <= (PIXELCOUNT); p++){
@@ -133,7 +152,7 @@ void recharge(){
 	//Serial.println(pixelPosition);
 		} // animation and recharge timer thing
 void discharge(){	
-	int p = pixelPosition - 1;
+	int p = pixelPosition;
 		for(int i = 0; i <= (PIXELCOUNT); i++){
 			ring[i].setRGB(0, 0, 0);
 			}
@@ -156,26 +175,28 @@ void pixelIntervalTimer (){
 		intervalDivisor = MAX_TIME_ON / (PIXELCOUNT); // sets up the divisor for time to determine pixel position value
 		//
 		currentMillis = millis();
-		if (!lockout && currentMillis - previousMillis >= intervalDivisor ) {
-		  pixelPosition = PIXELCOUNT -(timeHeldOn / intervalDivisor) ;
+		if (!lockout && pixelPosition > 0) {
+		  delay (intervalDivisor);
+		  pixelPosition--; 
+		  Serial.print ("Pixel Position - ");
+		  Serial.println(pixelPosition);
 		}
-		if (lockout && (currentMillis - previousMillis >= intervalDivisor ) && (pixelPosition < 16)) {
-		  delay(intervalDivisor);  /// this is bad must remove and fix. not safety timing, but should fix. 
+		if (lockout && (pixelPosition < 16)){
+		  delay(intervalDivisor * 2);  /// this is bad must remove and fix. not safety timing, but should fix. 
 		  pixelPosition++;
-		
+		  Serial.print ("Pixel Position - ");
+		  Serial.println(pixelPosition);
 		}
 	}
 		
 		
-
-
 /***************************************/
 /*	        Interrupt Handling         */
 /***************************************/
 void coilButtonOff() {
-  digitalWrite(SSR_PIN, LOW);
-  if (timeHeldOn > 10 && timeHeldOn < MIN_RECHG_DELAY){ // essentially performing a debounce check and 
-	timeHeldOn = MIN_RECHG_DELAY;					// establishing a minium time on for button mashers
-	}
+  if (timeHeldOn > 2){ // essentially performing a debounce check and 
+  buttonState = 0; // forces buttonstate off, so green isn't re-triggerd  
   lockout = 1; // locks coil from being re-fired once button is released
+  previousMillis = currentMillis;
   }
+ }
