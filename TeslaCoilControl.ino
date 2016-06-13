@@ -1,21 +1,23 @@
 #include<FastLED.h>
 //PinDefines
-#define BUTTON_PIN 		3 // needs to be on an interrupt pin
+#define BUTTON_PIN 			3 // needs to be on an interrupt pin
 #define SSR_PIN A0
 //FastLED
-#define RING_PIN 		6
-#define PIXELCOUNT 		16
-#define	BRIGHTNESS 		20 // sets fastLED global brightness
+#define RING_PIN 			6
+#define PIXELCOUNT 			16
+#define	BRIGHTNESS 			20 // sets fastLED global brightness
 //
-#define DEBOUNCE_TIME 	50 // how long the button needs to be pressed before activate
-						  // if it feels like there is a "delay" before the coil activates
-				          // lower this value
+#define DEBOUNCE_TIME 		50 // how long the button needs to be pressed before activate
+							// if it feels like there is a "delay" before the coil activates
+							// lower this value
 
 						  
-#define MAX_TIME_ON 	4000  // maximum tmie coil can be held on (ms)
+#define MAX_TIME_ON 		4000  // maximum tmie coil can be held on (ms)
 
-#define MIN_RECHG_DELAY 1000 // mininum time for recharge before button can be hit again
+#define MIN_RECHG_DELAY 	1000 // mininum time for recharge before button can be hit again
 							 // helps prevent button mashers 
+							 
+#define TIMEOFF_MULTIPLIER	2 //multiplier for recharge.
 
 /***************************************/
 /*	       Global Vars / Inits         */
@@ -26,6 +28,7 @@ CRGB ring[PIXELCOUNT]; // FastLED setup
 volatile uint8_t lockout = 0;
 volatile unsigned long previousMillis = 0;
 volatile unsigned long currentMillis = 0;
+volatile unsigned long intervalPrevMillis = 0;
 volatile uint16_t timeHeldOn = 0;
 volatile int buttonState = 0; // has to be volitile because of interrupts 
 uint8_t pixelPosition = 16; //current pixel position. always <= PIXELCOUNT
@@ -118,7 +121,7 @@ void timerLockControl() {
 /***************************************/
 	void timerUnlockControl() {
 		currentMillis = millis();
-		if (currentMillis - previousMillis >= (timeTilOff * 2) && pixelPosition == 16) { 
+		if (currentMillis - previousMillis >= (timeTilOff * TIMEOFF_MULTIPLIER) && pixelPosition == PIXELCOUNT) { 
 					//check the time, and then check the pixel position for a dirty second check
 		  //previousMillis = currentMillis;  
 		  lockout = 0; // unlock the coil to fire again
@@ -136,6 +139,7 @@ void systemReady(){
 		ring[p].setRGB(0, 255, 0);
 		}
 	FastLED.show();
+	intervalPrevMillis = currentMillis;
 	//Serial.println("system ready");
 	}
 void recharge(){		
@@ -175,18 +179,22 @@ void pixelIntervalTimer (){
 		intervalDivisor = MAX_TIME_ON / (PIXELCOUNT); // sets up the divisor for time to determine pixel position value
 		//
 		currentMillis = millis();
-		if (!lockout && pixelPosition > 0) {
-		  delay (intervalDivisor);
-		  pixelPosition--; 
-		  Serial.print ("Pixel Position - ");
-		  Serial.println(pixelPosition);
-		}
+		if (!lockout && pixelPosition > 0) {  
+			  if(currentMillis - intervalPrevMillis > intervalDivisor){
+			  pixelPosition--; 
+			  Serial.print ("Pixel Position - ");
+			  Serial.println(pixelPosition);
+			  intervalPrevMillis = currentMillis;
+			}
+     	}
 		if (lockout && (pixelPosition < 16)){
-		  delay(intervalDivisor * 2);  /// this is bad must remove and fix. not safety timing, but should fix. 
-		  pixelPosition++;
-		  Serial.print ("Pixel Position - ");
-		  Serial.println(pixelPosition);
-		}
+		  	  if(currentMillis - intervalPrevMillis > intervalDivisor * TIMEOFF_MULTIPLIER){
+			  pixelPosition++;
+			  Serial.print ("Pixel Position - ");
+			  Serial.println(pixelPosition);
+			  intervalPrevMillis = currentMillis;
+			}
+  	    }
 	}
 		
 		
